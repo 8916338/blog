@@ -1,0 +1,53 @@
+name: Jekyll Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 强制声明读写权限，解决 403 部署报错
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 自动修复脚本权限，解决 Permission denied 报错
+      - name: Fix script permissions
+        run: chmod +x scripts/*.sh
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      # 配置国内镜像加速，防止下载卡死失败
+      - name: Configure RubyGems mirror
+        run: bundle config set --global mirror.https://rubygems.org https://gems.ruby-china.com
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Generate highlight CSS
+        run: rougify style github > assets/css/syntax.css
+
+      - name: Build Jekyll site
+        run: bundle exec jekyll build
+
+      - name: Check HTML links
+        uses: anishathalye/gauntlet@v1
+        with:
+          site_path: '_site'
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
