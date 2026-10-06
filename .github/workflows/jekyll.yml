@@ -1,0 +1,212 @@
+name: 🧩 Jekyll Build & Deploy
+
+# ============================================================
+#  工作流说明：
+#  1. 自动安装 Ruby + Jekyll 环境
+#  2. 构建 Jekyll 站点（Markdown → HTML）
+#  3. 代码高亮样式生成
+#  4. HTML 链接完整性检查
+#  5. 部署到 GitHub Pages（自动）
+# ============================================================
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# 设置 GITHUB_TOKEN 权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 并发控制：只允许一个部署任务
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+env:
+  # Ruby 版本
+  RUBY_VERSION: '3.3'
+  # Node.js 版本（用于前端资源构建）
+  NODE_VERSION: '20'
+
+jobs:
+  # ========================
+  #  Job 1: 构建 Jekyll 站点
+  # ========================
+  build:
+    name: 🔨 Build Jekyll Site
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---- 检出代码 ----
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史（用于 Lastmod）
+
+      # ---- 安装 Ruby ----
+      - name: 💎 Setup Ruby ${{ env.RUBY_VERSION }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true  # 自动缓存 gem 依赖
+          cache-version: 1
+
+      # ---- 安装 Node.js（用于前端资源）----
+      - name: 📦 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      # ---- 缓存 Jekyll 构建 ----
+      - name: 🗄️ Cache Jekyll build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .jekyll-cache
+            .sass-cache
+            _site
+          key: ${{ runner.os }}-jekyll-${{ hashFiles('**/Gemfile.lock') }}-${{ hashFiles('**/*.md', '**/*.html', '**/*.css', '**/*.js') }}
+          restore-keys: |
+            ${{ runner.os }}-jekyll-${{ hashFiles('**/Gemfile.lock') }}-
+            ${{ runner.os }}-jekyll-
+
+      # ---- 安装 RubyGems 依赖 ----
+      - name: 📥 Install Ruby gems
+        run: |
+          echo "📦 安装 Jekyll 及插件..."
+          bundle config set --local path 'vendor/bundle'
+          bundle install --jobs 4 --retry 3
+
+      # ---- 配置国内 RubyGems 镜像（加速）----
+      - name: 🇨🇳 Configure RubyGems mirror
+        run: |
+          echo "🔧 配置 RubyGems 国内镜像加速..."
+          gem sources --add https://gems.ruby-china.com/ --remove https://rubygems.org/ 2>/dev/null || true
+          bundle config mirror.https://rubygems.org https://gems.ruby-china.com
+
+      # ---- 生成代码高亮样式 ----
+      - name: 🎨 Generate syntax highlighting CSS
+        run: |
+          echo "🎨 生成 Rouge 代码高亮样式..."
+          mkdir -p assets/css
+          # 使用 GitHub 风格主题（兼容 Pygments）
+          bundle exec rougify style github > assets/css/syntax.css
+          echo "✅ 高亮样式已生成: assets/css/syntax.css"
+
+      # ---- 构建 Jekyll 站点 ----
+      - name: 🔨 Build Jekyll site
+        run: |
+          echo "🔨 开始构建 Jekyll 站点..."
+          JEKYLL_ENV=production \
+          bundle exec jekyll build --destination build/jekyll
+        env:
+          JEKYLL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---- 构建统计 ----
+      - name: 📊 Build statistics
+        run: |
+          echo "## 🧩 Jekyll 构建报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 指标 | 数值 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| HTML 页面 | $(find build/jekyll -name '*.html' | wc -l) 个 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Markdown 文章 | $(find _posts -name '*.md' 2>/dev/null | wc -l) 篇 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 站点总大小 | $(du -sh build/jekyll | awk '{print $1}') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 文章列表" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -1 _posts/*.md 2>/dev/null || echo "（暂无文章）" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      # ---- 上传构建产物 ----
+      - name: 📦 Upload Jekyll build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jekyll-site
+          path: build/jekyll/
+          retention-days: 30
+
+  # ========================
+  #  Job 2: HTML 链接检查
+  # ========================
+  html-proofer:
+    name: 🔍 HTML Link Check
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 💎 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: 📥 Install dependencies
+        run: bundle install --jobs 4 --retry 3
+
+      - name: 🔨 Build site
+        run: JEKYLL_ENV=production bundle exec jekyll build --destination build/proofer
+
+      - name: 🔍 Run HTML Proofer
+        run: |
+          echo "🔍 检查 HTML 链接完整性..."
+          bundle exec htmlproofer build/proofer \
+            --disable-external \
+            --ignore-urls "/#.*/" \
+            --check-html \
+            --check-opengraph \
+            --log-level debug || echo "⚠️ 发现链接问题（非致命错误）"
+        continue-on-error: true
+
+  # ========================
+  #  Job 3: 部署到 GitHub Pages
+  # ========================
+  deploy:
+    name: 🚀 Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [build, html-proofer]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 💎 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: 📥 Install dependencies
+        run: bundle install --jobs 4 --retry 3
+
+      - name: 🔨 Build for production
+        run: |
+          JEKYLL_ENV=production \
+          bundle exec jekyll build --destination build/prod
+
+      # ---- 配置 GitHub Pages ----
+      - name: ⚙️ Setup Pages
+        uses: actions/configure-pages@v5
+
+      # ---- 上传到 GitHub Pages ----
+      - name: 📤 Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/prod
+
+      # ---- 部署 ----
+      - name: 🚀 Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

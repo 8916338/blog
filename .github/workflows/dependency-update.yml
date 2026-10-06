@@ -1,0 +1,52 @@
+name: Dependency Update
+
+on:
+  schedule:
+    # 每周一凌晨 2 点运行
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: 📦 Check & Update Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm install
+
+      - name: 🔍 Check outdated dependencies
+        id: outdated
+        run: |
+          OUTDATED=$(npm outdated --json 2>/dev/null || echo "{}")
+          echo "outdated=$OUTDATED" >> $GITHUB_OUTPUT
+          echo "## 📦 依赖更新检查" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          npm outdated || echo "所有依赖已是最新" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔒 Security audit
+        run: npm audit
+        continue-on-error: true
+
+      - name: 📝 Create issue if vulnerabilities found
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔒 依赖安全审计发现漏洞',
+              body: '自动检查发现依赖存在安全漏洞，请及时更新。\n\n详情请查看 [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})',
+              labels: ['security', 'dependencies']
+            })
