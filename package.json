@@ -1,0 +1,68 @@
+{
+  "name": "weibo-template",
+  "version": "1.0.0",
+  "description": "微言 - 模仿 Huxpro 博客主题的现代化微博模板",
+  "author": "元宝 <yuanbao@tencent.com>",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "npm run serve",
+    "serve": "node scripts/serve.js",
+    "build": "node scripts/build.js",
+    "build:dev": "cross-env NODE_ENV=development node scripts/build.js",
+    "build:prod": "cross-env NODE_ENV=production node scripts/build.js",
+    "clean": "rimraf build dist",
+    "lint": "node scripts/lint.js",
+    "format": "node scripts/format.js",
+    "optimize": "node scripts/optimize.js",
+    "prebuild": "npm run clean && npm run lint",
+    "postbuild": "npm run optimize",
+    "setup": "node scripts/setup.js",
+    "test": "node scripts/test.js",
+    "deploy": "node scripts/deploy.js",
+    "jekyll:setup": "bash scripts/setup-jekyll.sh",
+    "jekyll:install": "bundle install",
+    "jekyll:serve": "bash scripts/serve-jekyll.sh",
+    "jekyll:serve:drafts": "bash scripts/serve-jekyll.sh --drafts",
+    "jekyll:build": "bash scripts/build-jekyll.sh",
+    "jekyll:build:drafts": "bash scripts/build-jekyll.sh --drafts",
+    "jekyll:test": "bash scripts/test-jekyll.sh",
+    "jekyll:clean": "rm -rf _site .jekyll-cache .sass-cache vendor",
+    "jekyll:syntax": "mkdir -p assets/css && bundle exec rougify style github > assets/css/syntax.css",
+    "jekyll:new": "bundle exec jekyll new . --force",
+    "jekyll:doctor": "bundle exec jekyll doctor"
+  },
+  "devDependencies": {
+    "rimraf": "^5.0.5",
+    "cross-env": "^7.0.3",
+    "chalk": "^5.3.0",
+    "minimist": "^1.2.8",
+    "clean-css": "^5.3.3",
+    "uglify-js": "^3.17.4",
+    "html-minifier-terser": "^7.2.0",
+    "sharp": "^0.33.4",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3"
+  },
+  "keywords": [
+    "weibo",
+    "blog",
+    "template",
+    "jekyll",
+    "pwa",
+    "markdown",
+    "huxpro"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0",
+    "ruby": ">=3.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}

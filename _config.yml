@@ -1,0 +1,83 @@
+# ============================================================
+#  Jekyll 配置文件
+#  用于支持 Markdown 文章渲染，兼容 Huxpro 主题风格
+# ============================================================
+
+# ---- 基础设置 ----
+title: "微言"
+description: "一个模仿 Huxpro 的现代化极简微博模板"
+url: ""                    # 生产环境域名，如 https://yourname.github.io
+baseurl: ""                # 项目名（GitHub Pages 项目页需填 /your-repo）
+permalink: /posts/:year/:month/:day/:title/
+timezone: Asia/Shanghai
+
+# ---- 作者信息 ----
+author:
+  name: "微言"
+  email: "your-email@example.com"
+  bio: "分享生活与技术的点滴"
+  avatar: "/images/avatar.png"
+  github: "https://github.com/yourname"
+  twitter: "https://twitter.com/yourname"
+
+# ---- 构建设置 ----
+markdown: kramdown
+highlighter: rouge
+encoding: utf-8
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: true
+
+# ---- 代码高亮主题（兼容 Pygments）----
+# 替换高亮样式：将 rouge 主题 CSS 输出到 assets/css/syntax.css
+# 生成命令：rougify style github > assets/css/syntax.css
+
+# ---- 包含/排除 ----
+include:
+  - "_posts"
+  - "_drafts"
+  - "_layouts"
+  - "_includes"
+  - "_sass"
+  - "assets"
+  - "CNAME"
+exclude:
+  - "node_modules"
+  - "build"
+  - "dist"
+  - "docs"
+  - ".github"
+  - "scripts"
+  - "src"
+  - "package.json"
+  - "package-lock.json"
+  - "*.zip"
+  - "Makefile"
+  - "Dockerfile"
+  - "docker-compose.yml"
+  - "netlify.toml"
+  - "vercel.json"
+  - ".editorconfig"
+  - ".eslintrc.json"
+  - ".prettierrc.json"
+
+# ---- 分页 ----
+paginate: 10
+paginate_path: "/page:num/"
+
+# ---- 默认值 ----
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+      comments: true
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"

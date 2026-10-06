@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  weibo-template:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: weibo-template
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./build:/usr/share/nginx/html:ro
