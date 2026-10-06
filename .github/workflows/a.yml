@@ -1,48 +1,30 @@
-name: Extract archive to repo root
+name: Download and Extract ZIP
 
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
+  workflow_dispatch:  # 支持手动触发
 
 jobs:
-  extract:
+  download-and-extract:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # 允许推送提交回仓库
+
     steps:
-      - name: Checkout
+      - name: 检出仓库代码
         uses: actions/checkout@v4
 
-      - name: Download and extract archive
-        env:
-          ARCHIVE_URL: "https://mpimg.cn/down.php/5b39cdd2f1881400f7366b2c7945d8a3.zip"
+      - name: 下载 ZIP 文件
         run: |
-          set -e
-          mkdir -p /tmp/archive
-          curl -L "$ARCHIVE_URL" -o /tmp/archive/archive
-          cd /tmp/archive
-          file archive
-          if file archive | grep -qi 'gzip'; then
-            tar -xzf archive
-          elif file archive | grep -qi 'zip'; then
-            unzip -o archive
-          elif file archive | grep -qi 'tar'; then
-            tar -xf archive
-          else
-            echo "未知压缩格式"; exit 1
-          fi
-          # 把解压出的内容复制到仓库根目录
-          rsync -a --exclude='archive' /tmp/archive/ "$GITHUB_WORKSPACE/"
+          curl -L -o package.zip \
+            "https://mpimg.cn/down.php/5b39cdd2f1881400f7366b2c7945d8a3.zip"
 
-      - name: Commit and push
+      - name: 解压 ZIP 到仓库根目录
         run: |
-          cd "$GITHUB_WORKSPACE"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "没有变化，跳过提交"
-          else
-            git commit -m "Extract archive to repo root"
-            git push
-          fi
+          unzip -o package.zip -d .
+          rm package.zip
+
+      - name: 提交并推送更改
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: 自动解压并更新文件"
