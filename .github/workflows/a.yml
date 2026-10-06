@@ -1,14 +1,14 @@
 name: Download and Extract ZIP
 
 on:
-  workflow_dispatch:  # 支持手动触发
+  workflow_dispatch:
 
 jobs:
   download-and-extract:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # 允许推送提交回仓库
+      contents: write
 
     steps:
       - name: 检出仓库代码
@@ -19,9 +19,9 @@ jobs:
           curl -L -o package.zip \
             "https://mpimg.cn/down.php/5b39cdd2f1881400f7366b2c7945d8a3.zip"
 
-      - name: 解压 ZIP 到仓库根目录
+      - name: 解压 ZIP 到仓库根目录（排除 workflows）
         run: |
-          unzip -o package.zip -d .
+          unzip -o package.zip -d . -x ".github/workflows/*"
           rm package.zip
 
       - name: 提交并推送更改
